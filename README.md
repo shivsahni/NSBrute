@@ -18,7 +18,9 @@ python NSTakeover.py -d domain -a accessKey -s secretKey
 
 ```
 The script would be indefinitely creating the zones for the vulnerable domains in your AWS account until it finds a zone with a common nameserver.
-![Image 1](https://github.com/shivsahni/RawContent/blob/master/1.png)
+
+![Image 1](https://github.com/shivsahni/RawContent/blob/master/1.png =100x20)
 
 Once the script creates a zone with a common nameserver you can log in to your AWS account to create the resource records for the domain to have the complete control over the domain.
-![Image 2](https://github.com/shivsahni/RawContent/blob/master/1.png)
+
+![Image 2](https://github.com/shivsahni/RawContent/blob/master/1.png =100x20)
