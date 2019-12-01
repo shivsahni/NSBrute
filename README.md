@@ -12,9 +12,14 @@ Clone the repo
 ```
 git clone https://github.com/shivsahni/NSBrute.git
 ```
-Once the script is cloned, run the script using your AWS Access Key and Secret Key as shown below:
+Install the dependencies
 ```
-python NSTakeover.py -d domain -a accessKey -s secretKey
+pip install -r requirements.txt
+```
+
+Once the script is cloned, and the requirements have been successfully installed, run the script using your AWS Access Key and Secret Key as shown below:
+```
+python NSBrute.py -d domain -a accessKey -s secretKey
 
 ```
 The script would be indefinitely creating the zones for the vulnerable domains in your AWS account until it finds a zone with a common nameserver.
