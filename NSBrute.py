@@ -16,7 +16,7 @@ forceDelete=False
 def force_delete_zones(conn, successful_zone_id=""):
 	# we know we have to be very careful here, there was a successful exploit of the vulnerability, and we don't want to reverse that
 	print "This is the list of the hosted zones"
-	print conn.list_hosted_zones()
+	print str(conn.list_hosted_zones())
 	for zone in conn.list_hosted_zones():
 		if zone.__dict__["comment"] == "created by NSBrute during testing.":
 			if zone.__dict__["id"] != successful_zone_id:
