@@ -128,10 +128,13 @@ try:
 			myPrint("Created a new zone with following NS: ","INFO_WS")
 			myPrint("".join(nsAWS),"INFO_WS")
 			intersection=set(nsAWS).intersection(set(targetNS))
+			print "This is intersection: " + str(intersection)
+			print "This is the len(intersection): " + str(len(intersection))
 			if(len(intersection)==0):
 				myPrint("No common NS found, deleting new zone","ERROR")
 				print ""
 				new_zone.delete()
+				print "The zone should have been deleted successfully"
 			else:
 				successful_zone_id = new_zone.id
 				myPrint("Successful attempt after "+str(counter)+" iterations.","SECURE")
@@ -144,8 +147,9 @@ try:
 			if new_zone != 0:
 				new_zone.delete()
 			continue
-except KeyboardInterrupt:
+except KeyboardInterrupt:	
 	if forceDelete:
+		print("Ensuring that all zones are force deleted")
 		force_delete_zones(successful_zone_id)
 	else:
 		exit()
