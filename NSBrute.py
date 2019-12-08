@@ -135,6 +135,7 @@ try:
 			if(len(intersection)==0):
 				myPrint("No common NS found, deleting new zone","ERROR")
 				print ""
+				print new_zone.__dict__["id"]
 				new_zone.delete()
 				print "The zone should have been deleted successfully"
 			else:
