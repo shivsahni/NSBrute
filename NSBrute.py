@@ -68,8 +68,9 @@ if (sys.argv[3]=="-a" or sys.argv[3]=="--accessId"):
 	accessKey=sys.argv[4]
 if (sys.argv[5]=="-s" or sys.argv[5]=="--secretKey"):
 	secretKey=sys.argv[6]
-if (sys.argv[7]=="-f" or sys.argv[7]=="--forceDelete"):
-	forceDelete = True
+if (len(sys.argv) == 8):
+	if (sys.argv[7]=="-f" or sys.argv[7]=="--forceDelete"):
+		forceDelete = True
 try:
 	nsRecords = dns.resolver.query(victimDomain, 'NS')
 except:
