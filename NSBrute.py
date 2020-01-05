@@ -18,7 +18,7 @@ def force_delete_zones(conn, successful_zone_id=""):
 	print "This is the list of the hosted zones"
 	print str(conn.list_hosted_zones())
 	for zone in conn.list_hosted_zones():
-		if zone.__dict__["comment"] == "created by NSBrute during testing.":
+		if zone.__dict__["comment"] == "zaheck":
 			if zone.__dict__["id"] != successful_zone_id:
 				zone_to_delete = conn.get_hosted_zone_by_id(zone.__dict__["id"])
 				zone_to_delete.delete()
@@ -121,7 +121,7 @@ try:
 		try: 
 			new_zone=0
 			new_zone, change_info = conn.create_hosted_zone(
-		    victimDomain, comment='created by NSBrute during testing.'
+		    victimDomain, comment='zaheck'
 			)
 			#Erroneous Condition
 			if new_zone is None:
