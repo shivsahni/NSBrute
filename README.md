@@ -1,5 +1,5 @@
 # NSBrute
- NSBrute is a command line utility built using Python that allows you to gain access to the vulnerable doamin by exploiting NS Takeover vulnerability. If you want to know about NS Takeover feel free to refer [this](https://medium.com/@shivsahni2/aws-ns-takeover-356d2a293bca).
+ NSBrute is a command line utility built using Python that allows you to gain access to the vulnerable domain by exploiting NS Takeover vulnerability. If you want to know about NS Takeover feel free to refer [this](https://medium.com/@shivsahni2/aws-ns-takeover-356d2a293bca).
 
 ## Prerequisites
 * Programmatic access to AWS account
