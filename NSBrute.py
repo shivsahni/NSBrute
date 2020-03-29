@@ -53,9 +53,10 @@ def myPrint(text, type):
 	if(type=="SECURE"):
 		print bcolors.OKGREEN+bcolors.BOLD+text+bcolors.ENDC
 
-#python NSBrute.py -d domain -a accessKey -s secretKey -ns a,b,c,d -k '["zone_id_to_keep_1", "zone_id_to_keep_2"]'
+#python NSBrute.py -d domain -a accessKey -s secretKey -ns a,b,c,d -f
 
 zones_to_keep = []
+forceDelete = False
 
 if (len(sys.argv)<7):
 	myPrint("Please provide the required arguments to initiate scanning.", "ERROR")
@@ -71,8 +72,8 @@ if (sys.argv[3]=="-a" or sys.argv[3]=="--accessId"):
 if (sys.argv[5]=="-s" or sys.argv[5]=="--secretKey"):
 	secretKey=sys.argv[6]
 if len(sys.argv) >= 8:
-	if (sys.argv[7]=="-k" or sys.argv[7]=="--zonesToKeep"):
-		zones_to_keep =  ast.literal_eval(sys.argv[8])
+	if (sys.argv[7]=="-f" or sys.argv[7]=="--forceDelete"):
+		forceDelete =  True
 try:
 	nsRecords = dns.resolver.query(victimDomain, 'NS')
 except:
@@ -142,7 +143,7 @@ try:
 
 except KeyboardInterrupt:
 	quit = raw_input("Would you like to quit without having deleted all hosted zones? Put 'y' if you want to quit now without having deleted all hosted zones. Put any other sequence of characters to quit immediately: ")
-	if len(created_zones) != 0 and quit == "y":
+	if (len(created_zones) != 0 and quit == "y") or forceDelete:
 		command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 list-hosted-zones"
 		out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 		stdout,stderr = out.communicate()
@@ -151,18 +152,21 @@ except KeyboardInterrupt:
 		if stdout != 'false':
 			json_data = json.loads(stdout)
 		
-		remaining_zones = []
+		zones_to_be_removed = []
+		zones_for_account = []
 		
 		for zone in json_data["HostedZones"]:
-			remaining_zones.append(str(zone["Id"].replace("/hostedzone/","")))
-		
-		for zone in zones_to_keep:
-			remaining_zones.remove(zone)
+			zones_for_account.append(str(zone["Id"].replace("/hostedzone/","")))
 
 		if len(successful_zone) != 0:
-			remaining_zones.remove(successful_zone[0])
-
-		for zone in remaining_zones:
+			if successful_zone[0] in created_zones:
+				created_zones.remove(successful_zone[0])
+		
+		for zone in created_zones:
+			if zone in zones_for_account:
+				zones_to_be_removed.append(zone)
+		
+		for zone in zones_to_be_removed:
 			command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
 			out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 			stdout,stderr = out.communicate()
@@ -177,17 +181,22 @@ json_data = None
 
 if stdout != 'false':
 	json_data = json.loads(stdout)
-remaining_zones = []
-for zone in json_data["HostedZones"]:
-	remaining_zones.append(str(zone["Id"].replace("/hostedzone/","")))
 
-for zone in zones_to_keep:
-	remaining_zones.remove(zone)
+zones_to_be_removed = []
+zones_for_account = []
+
+for zone in json_data["HostedZones"]:
+	zones_for_account.append(str(zone["Id"].replace("/hostedzone/","")))
 
 if len(successful_zone) != 0:
-	remaining_zones.remove(successful_zone[0])
+	if successful_zone[0] in created_zones:
+		created_zones.remove(successful_zone[0])
 
-for zone in remaining_zones:
+for zone in created_zones:
+	if zone in zones_for_account:
+		zones_to_be_removed.append(zone)
+
+for zone in zones_to_be_removed:
 	command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
-	out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+	out = subprocess.Popeen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 	stdout,stderr = out.communicate()
