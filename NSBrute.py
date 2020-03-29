@@ -198,5 +198,5 @@ for zone in created_zones:
 
 for zone in zones_to_be_removed:
 	command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 delete-hosted-zone --id " + str(zone)
-	out = subprocess.Popeen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+	out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 	stdout,stderr = out.communicate()
