@@ -19,12 +19,12 @@ pip install -r requirements.txt
 
 Once the script is cloned, and the requirements have been successfully installed, run the script using your AWS Access Key and Secret Key as shown below:
 ```bash
-python NSBrute.py -d domain -a accessKey -s secretKey -k '["zone_id_to_keep_1", "zone_id_to_keep_2"]'
+python NSBrute.py -d domain -a accessKey -s secretKey 
 
 ```
-If you don't want to keep any zones, you can ran a command similar to this:
+If you want to force delete the failed zones you made during testing, you can ran a command similar to this (provide a `-f` at the end):
 ```bash
-python NSBrute.py -d domain -a accessKey -s secretKey -k '[]'
+python NSBrute.py -d domain -a accessKey -s secretKey -f
 ```
 
 The script would be indefinitely creating the zones for the vulnerable domains in your AWS account until it finds a zone with a common nameserver.

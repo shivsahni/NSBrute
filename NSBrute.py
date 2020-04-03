@@ -142,8 +142,7 @@ try:
 			continue
 
 except KeyboardInterrupt:
-	quit = raw_input("Would you like to quit without having deleted all hosted zones? Put 'y' if you want to quit now without having deleted all hosted zones. Put any other sequence of characters to quit immediately: ")
-	if (len(created_zones) != 0 and quit == "y") or forceDelete:
+	if forceDelete and len(created_zones) != 0:
 		command = "AWS_ACCESS_KEY_ID="+accessKey+" AWS_SECRET_ACCESS_KEY="+secretKey+" aws route53 list-hosted-zones"
 		out = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 		stdout,stderr = out.communicate()
