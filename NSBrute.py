@@ -6,6 +6,7 @@ import dns.resolver
 import subprocess
 import json
 import ast
+import whois
 
 accessKey=""
 secretKey=""
@@ -75,8 +76,18 @@ if len(sys.argv) >= 8:
 	if (sys.argv[7]=="-f" or sys.argv[7]=="--forceDelete"):
 		forceDelete =  True
 try:
-	nsRecords = dns.resolver.query(victimDomain, 'NS')
-except:
+	nsRecords_method = None
+	nsRecords = []
+	try:
+		nsRecords_method = "whois"
+		nsRecords = dns.resolver.query(victimDomain, 'NS')
+	except:
+		nsRecords_method = "ns resolver"
+		nsRecords = list(whois.query(victimDomain).name_servers)
+
+	myPrint("Detected NS records using "+nsRecords_method+": "+str(nsRecords), "INFO")
+
+except Exception as e:
 	myPrint("Unable to fetch NS records for "+victimDomain+"\nPlease check the domain name and try again.","ERROR")
 	exit(1)
 isInt= isinstance(nsRecords,int)
