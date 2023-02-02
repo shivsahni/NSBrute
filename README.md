@@ -10,7 +10,7 @@
 
 Clone the repo
 ```
-git clone https://github.com/shivsahni/NSBrute.git
+git clone https://github.com/cowsaymoe/NSBrute.git
 ```
 Install the dependencies
 ```
