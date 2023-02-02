@@ -75,7 +75,7 @@ if len(sys.argv) >= 8:
 	if (sys.argv[7]=="-f" or sys.argv[7]=="--forceDelete"):
 		forceDelete =  True
 try:
-	nsRecords = dns.resolver.query(victimDomain, 'NS')
+	nsRecords = dns.resolver.resolve(victimDomain, 'NS')
 except:
 	myPrint("Unable to fetch NS records for "+victimDomain+"\nPlease check the domain name and try again.","ERROR")
 	exit(1)
