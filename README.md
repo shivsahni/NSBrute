@@ -3,14 +3,14 @@
 
 ## Prerequisites
 * Programmatic access to AWS account
-* Support for Python 2.7
+* Support for Python 3
 
 
 ## Executing
 
 Clone the repo
 ```
-git clone https://github.com/shivsahni/NSBrute.git
+git clone https://github.com/cowsaymoe/NSBrute.git
 ```
 Install the dependencies
 ```
