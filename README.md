@@ -3,7 +3,7 @@
 
 ## Prerequisites
 * Programmatic access to AWS account
-* Support for Python 2.7
+* Support for Python 3
 
 
 ## Executing
